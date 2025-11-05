@@ -24,5 +24,6 @@ public interface UserRepositoryPort {
 
     Optional<User> findByEmailOrUsername(String email, String username);
 
+    Optional<User> findByEmailVerificationToken(String token);
 
 }

@@ -8,4 +8,6 @@ public interface AuthUseCase {
 
     User authenticate(String email, String password);
 
+    void verifyEmail(String token);
+
 }

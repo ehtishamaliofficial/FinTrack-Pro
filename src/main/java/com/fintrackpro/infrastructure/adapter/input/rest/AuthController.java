@@ -7,10 +7,8 @@ import com.fintrackpro.infrastructure.adapter.input.dto.request.RegisterRequest;
 import com.fintrackpro.infrastructure.adapter.input.dto.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -23,6 +21,12 @@ public class AuthController {
     @PostMapping("/register")
     public ApiResponse<?> register(@Valid @RequestBody RegisterRequest registerRequest) {
         authService.register(userApiMapper.toDomain(registerRequest));
-        return ApiResponse.success("Register Successfully");
+        return ApiResponse.success("Registration successful. Please check your email to verify your account.");
+    }
+
+    @GetMapping("/verify-email")
+    public ApiResponse<?> verifyEmail(@RequestParam("token") String token) {
+        authService.verifyEmail(token);
+        return ApiResponse.success("Email verified successfully. Welcome to FinTrack Pro!");
     }
 }
