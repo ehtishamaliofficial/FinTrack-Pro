@@ -12,6 +12,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -103,6 +104,79 @@ public class EmailService implements EmailServicePort {
         } catch (MessagingException e) {
             log.error("Failed to send welcome email to: {}", to, e);
             throw new RuntimeException("Failed to send welcome email", e);
+        }
+    }
+
+    @Override
+    public void sendLoginSuccessEmail(String to, String username, String ipAddress, String userAgent, LocalDateTime loginTime) {
+        try {
+            String subject = "New login to your FinTrack Pro account";
+            String title = "Login successful";
+            String content = """
+                <p>Hi %s,</p>
+                <p>Your account was just signed in successfully.</p>
+                <ul>
+                  <li><strong>Time:</strong> %s</li>
+                  <li><strong>IP Address:</strong> %s</li>
+                  <li><strong>User Agent:</strong> %s</li>
+                </ul>
+                <p>If this was you, no action is needed. If you don't recognize this activity, please secure your account.</p>
+            """.formatted(username, loginTime, ipAddress, userAgent);
+
+            String buttonLink = frontendUrl + "/account/security";
+            sendGenericEmail(
+                    to,
+                    subject,
+                    title,
+                    content,
+                    "Review security",
+                    buttonLink,
+                    "success",
+                    null,
+                    "success"
+            );
+            log.info("Login success email sent to: {}", to);
+        } catch (RuntimeException e) {
+            // sendGenericEmail already wraps MessagingException, so just log
+            log.error("Failed to send login success email to: {}", to, e);
+        }
+    }
+
+    @Override
+    public void sendLoginFailureEmail(String to, String username, String ipAddress, String userAgent, int failedAttempts, LocalDateTime lockUntil) {
+        try {
+            String subject = "Failed login attempt on your FinTrack Pro account";
+            String title = "Login attempt blocked";
+            String lockInfo = lockUntil != null ?
+                    "<p><strong>Account lock:</strong> Your account is locked until %s due to too many failed attempts.</p>".formatted(lockUntil) :
+                    "";
+            String content = ("""
+                <p>Hi %s,</p>
+                <p>There was a failed attempt to sign in to your account.</p>
+                <ul>
+                  <li><strong>IP Address:</strong> %s</li>
+                  <li><strong>User Agent:</strong> %s</li>
+                  <li><strong>Failed Attempts:</strong> %d</li>
+                </ul>
+            """ + lockInfo + """
+                <p>If this wasn't you, we recommend updating your password and reviewing your security settings.</p>
+            """).formatted(username, ipAddress, userAgent, failedAttempts);
+
+            String buttonLink = frontendUrl + "/account/security";
+            sendGenericEmail(
+                    to,
+                    subject,
+                    title,
+                    content,
+                    "Secure account",
+                    buttonLink,
+                    "danger",
+                    null,
+                    "danger"
+            );
+            log.info("Login failure email sent to: {}", to);
+        } catch (RuntimeException e) {
+            log.error("Failed to send login failure email to: {}", to, e);
         }
     }
 
