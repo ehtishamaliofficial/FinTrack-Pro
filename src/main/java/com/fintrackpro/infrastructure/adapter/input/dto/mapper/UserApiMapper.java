@@ -5,32 +5,44 @@ import com.fintrackpro.domain.model.User;
 import com.fintrackpro.infrastructure.adapter.input.dto.request.RegisterRequest;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.Mappings;
 import org.mapstruct.Named;
+import org.springframework.beans.factory.annotation.Value;
+
+import java.time.Clock;
+import java.time.LocalDateTime;
 
 @Mapper(componentModel = "spring")
-public interface UserApiMapper {
+public abstract class UserApiMapper {
 
-    @Mapping(target = "firstName", source = "fullName", qualifiedByName = "extractFirstName")
-    @Mapping(target = "lastName", source = "fullName", qualifiedByName = "extractLastName")
+    @Value("${app.default.language:en}")
+    protected String defaultLanguage;
+
+    @Value("${app.default.timezone:UTC}")
+    protected String defaultTimezone;
+    
+    @Value("${app.default.currency:PKR}")
+    protected String defaultCurrency;
+
+    @Mapping(target = "id", ignore = true)
     @Mapping(target = "username", source = "username")
-    @Mapping(target = "emailVerified", constant = "false")
+    @Mapping(target = "email", source = "email")
+    @Mapping(target = "password", source = "password")
+    @Mapping(target = "phoneNumber", source = "phoneNumber")
+    @Mapping(target = "dateOfBirth", source = "dateOfBirth")
+    @Mapping(target = "profilePictureUrl", source = "profilePictureUrl")
     @Mapping(target = "enabled", constant = "true")
-    User toDomain(RegisterRequest request);
+    @Mapping(target = "accountNonLocked", constant = "true")
+    @Mapping(target = "emailVerified", constant = "false")
+    @Mapping(target = "failedLoginAttempts", constant = "0")
+    @Mapping(target = "defaultCurrency", expression = "java(registerRequest.currency() != null && !registerRequest.currency().trim().isEmpty() ? registerRequest.currency() : defaultCurrency)")
+    @Mapping(target = "timezone", expression = "java(registerRequest.timezone() != null && !registerRequest.timezone().trim().isEmpty() ? registerRequest.timezone() : defaultTimezone)")
+    @Mapping(target = "language", expression = "java(registerRequest.language() != null && !registerRequest.language().trim().isEmpty() ? registerRequest.language() : defaultLanguage)")
+    @Mapping(target = "createdAt", expression = "java(now())")
+    @Mapping(target = "updatedAt", expression = "java(now())")
+    @Mapping(target = "deleted", constant = "false")
+    public abstract User toDomain(RegisterRequest registerRequest);
 
-
-    @Named("extractFirstName")
-    default String extractFirstName(String fullName) {
-        return fullName != null && fullName.contains(" ")
-                ? fullName.split(" ")[0]
-                : fullName;
+    protected LocalDateTime now() {
+        return LocalDateTime.now(Clock.systemUTC());
     }
-
-    @Named("extractLastName")
-    default String extractLastName(String fullName) {
-        if (fullName == null) return null;
-        String[] parts = fullName.split(" ", 2);
-        return parts.length > 1 ? parts[1] : "";
-    }
-
 }

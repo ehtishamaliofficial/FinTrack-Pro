@@ -2,10 +2,9 @@ package com.fintrackpro.infrastructure.adapter.input.dto.request;
 
 
 import com.fintrackpro.infrastructure.validation.annotation.FieldMatch;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
+
+import java.time.LocalDate;
 
 
 /**
@@ -17,9 +16,13 @@ import jakarta.validation.constraints.Size;
         message = "{confirmPassword.match}"
 )
 public record RegisterRequest(
-        @NotBlank(message = "{fullName.required}")
-        @Size(min = 3, max = 50, message = "{fullName.size}")
-        String fullName,
+        @NotBlank(message = "{firstName.required}")
+        @Size(min = 2, max = 50, message = "{firstName.size}")
+        String firstName,
+
+        @NotBlank(message = "{lastName.required}")
+        @Size(min = 2, max = 50, message = "{lastName.size}")
+        String lastName,
 
         @NotBlank(message = "{email.required}")
         @Email(message = "{email.invalid}")
@@ -41,5 +44,32 @@ public record RegisterRequest(
         String password,
 
         @NotBlank(message = "{confirmPassword.required}")
-        String confirmPassword
-) { }
+        String confirmPassword,
+        
+        // New required fields
+        @NotBlank(message = "{phone.required}")
+        @Pattern(regexp = "^\\+?[0-9\\-\\(\\)\\s]{8,20}$", message = "{phone.invalid}")
+        String phoneNumber,
+        
+        @NotNull(message = "{dateOfBirth.required}")
+        @Past(message = "{dateOfBirth.past}")
+        LocalDate dateOfBirth,
+        
+        // Optional fields
+        String profilePictureUrl,
+        
+        @Size(min = 2, max = 50, message = "{language.size}")
+        String language,
+        
+        @Size(min = 2, max = 50, message = "{timezone.size}")
+        String timezone,
+        
+        @Size(min = 3, max = 3, message = "{currency.size}")
+        String currency
+) {
+    public RegisterRequest {
+        // Set default values for optional fields if not provided
+        language = language != null ? language : "en";
+        timezone = timezone != null ? timezone : "UTC";
+    }
+}
