@@ -14,32 +14,32 @@ import jakarta.validation.constraints.Size;
 @FieldMatch(
         first = "password",
         second = "confirmPassword",
-        message = "Passwords do not match"
+        message = "{confirmPassword.match}"
 )
 public record RegisterRequest(
-        @NotBlank(message = "Full name is required")
-        @Size(min = 3, max = 50, message = "Full name must be between 3 and 50 characters")
+        @NotBlank(message = "{fullName.required}")
+        @Size(min = 3, max = 50, message = "{fullName.size}")
         String fullName,
 
-        @NotBlank(message = "Email is required")
-        @Email(message = "Email must be valid")
+        @NotBlank(message = "{email.required}")
+        @Email(message = "{email.invalid}")
         String email,
 
-        @NotBlank(message = "Username is required")
+        @NotBlank(message = "{username.required}")
         @Pattern(
                 regexp = "^(?=.{3,20}$)(?!_)(?!.*__)[A-Za-z0-9_]+(?<!_)$",
-                message = "Username can only contain letters, numbers, and underscores, must be 3-20 chars, cannot start/end with underscore, and no consecutive underscores."
+                message = "{username.pattern}"
         )
         String username,
 
-        @NotBlank(message = "Password is required")
-        @Size(min = 8, max = 30, message = "Password must be between 8 and 30 characters")
+        @NotBlank(message = "{password.required}")
+        @Size(min = 8, max = 30, message = "{password.size}")
         @Pattern(
                 regexp = "^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]+$",
-                message = "Password must contain uppercase, lowercase, digit and special character"
+                message = "{password.pattern}"
         )
         String password,
 
-        @NotBlank(message = "Confirm password is required")
+        @NotBlank(message = "{confirmPassword.required}")
         String confirmPassword
 ) { }
