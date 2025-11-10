@@ -24,7 +24,7 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
         UserEntity entity;
         
         if (user.id() != null) {
-            // Update existing user - fetch the entity first to preserve version
+            // Update existing user - fetch the entity first
             entity = jpaUserRepository.findById(user.id())
                     .orElseThrow(() -> new RuntimeException("User not found with id: " + user.id()));
             

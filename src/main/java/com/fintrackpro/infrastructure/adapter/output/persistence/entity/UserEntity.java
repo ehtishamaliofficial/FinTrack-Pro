@@ -135,10 +135,6 @@ public class UserEntity {
     @Column(name = "updated_by", length = 50)
     private String updatedBy;
 
-    @Version
-    @Column(nullable = false)
-    private Long version = 0L;
-
     // ============================================
     // Soft Delete
     // ============================================
@@ -171,9 +167,6 @@ public class UserEntity {
         }
         if (this.deleted == null) {
             this.deleted = false;
-        }
-        if (this.version == null) {
-            this.version = 0L;
         }
     }
 
