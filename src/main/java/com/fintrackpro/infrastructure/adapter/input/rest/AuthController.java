@@ -11,8 +11,10 @@ import com.fintrackpro.infrastructure.adapter.input.dto.response.AuthResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.ModelAndView;
 
 
 @RestController
@@ -66,10 +68,17 @@ public class AuthController {
         return ApiResponse.success("All sessions logged out successfully");
     }
 
+    @Value("${app.frontend.url:http://localhost:3000}")
+    private String frontendUrl;
+
     @GetMapping("/verify-email")
-    public ApiResponse<?> verifyEmail(@RequestParam("token") String token) {
+    public ModelAndView verifyEmail(@RequestParam("token") String token) {
         authService.verifyEmail(token);
-        return ApiResponse.success("Email verified successfully. Welcome to FinTrack Pro!");
+        
+        ModelAndView modelAndView = new ModelAndView("verification-success");
+        modelAndView.addObject("dashboardUrl", frontendUrl + "/dashboard");
+        modelAndView.addObject("loginUrl", frontendUrl + "/login");
+        return modelAndView;
     }
 
     private String getClientIP(HttpServletRequest request) {

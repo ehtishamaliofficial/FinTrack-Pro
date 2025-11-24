@@ -82,6 +82,32 @@ public class EmailService implements EmailServicePort {
     }
 
     @Override
+    public void sendVerificationSuccessEmail(String to, String username) {
+        try {
+            String subject = messageUtil.getMessage("email.verification.success.subject");
+            String dashboardLink = frontendUrl + "/dashboard";
+            
+            Context context = new Context();
+            context.setVariable("username", username);
+            context.setVariable("dashboardLink", dashboardLink);
+            context.setVariable("subject", subject);
+            context.setVariable("headerTitle", messageUtil.getMessage("email.verification.success.header"));
+            context.setVariable("headerTheme", "success");
+            context.setVariable("footerText", messageUtil.getMessage("email.footer"));
+            context.setVariable("baseUrl", frontendUrl);
+            context.setVariable("contentTemplate", "email/verification-success-email");
+            
+            String htmlContent = templateEngine.process("email/email-base", context);
+            
+            sendHtmlEmail(to, subject, htmlContent);
+            log.info("Verification success email sent to: {}", to);
+        } catch (MessagingException e) {
+            log.error("Failed to send verification success email to: {}", to, e);
+            throw new RuntimeException("Failed to send verification success email", e);
+        }
+    }
+
+    @Override
     public void sendWelcomeEmail(String to, String username) {
         try {
             String subject = messageUtil.getMessage("email.welcome.subject");
