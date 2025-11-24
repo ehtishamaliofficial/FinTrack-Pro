@@ -19,4 +19,12 @@ public interface EmailServicePort {
      * Send an email when a user login fails (wrong password, etc.).
      */
     void sendLoginFailureEmail(String to, String username, String ipAddress, String userAgent, int failedAttempts, LocalDateTime lockUntil);
+    
+    /**
+     * Send an email when a user's email is successfully verified.
+     * 
+     * @param to The recipient's email address
+     * @param username The username of the recipient
+     */
+    void sendVerificationSuccessEmail(String to, String username);
 }
