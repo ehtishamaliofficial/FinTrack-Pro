@@ -250,14 +250,9 @@ public class AuthService implements AuthUseCase {
         refreshTokenRepository.save(refreshToken);
     }
 
-    @Override
     public void verifyEmail(String token) {
         User user = userRepositoryPort.findByEmailVerificationToken(token)
                 .orElseThrow(() -> new InvalidRequestException(messageUtil.getMessage("error.verification.token.invalid")));
-
-        if (user.emailVerificationTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new InvalidRequestException(messageUtil.getMessage("error.verification.token.expired"));
-        }
 
         if (user.emailVerified()) {
             throw new InvalidRequestException(messageUtil.getMessage("error.email.already.verified"));
@@ -266,7 +261,10 @@ public class AuthService implements AuthUseCase {
         User verifiedUser = user.verifyEmail();
         userRepositoryPort.save(verifiedUser);
 
-        // Send welcome email
+        // Send verification success email
+        emailServicePort.sendVerificationSuccessEmail(verifiedUser.email(), verifiedUser.username());
+
+        // Also send welcome email
         emailServicePort.sendWelcomeEmail(verifiedUser.email(), verifiedUser.username());
     }
 }
