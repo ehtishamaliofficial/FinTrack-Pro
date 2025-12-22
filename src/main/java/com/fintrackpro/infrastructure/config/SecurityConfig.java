@@ -32,6 +32,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
+import com.fintrackpro.infrastructure.security.OAuth2LoginSuccessHandler;
 
 @Configuration
 public class SecurityConfig {
@@ -61,8 +62,7 @@ public class SecurityConfig {
                 new CharacterRule(EnglishCharacterData.LowerCase, 1),
                 new CharacterRule(EnglishCharacterData.Digit, 1),
                 new CharacterRule(EnglishCharacterData.Special, 1),
-                new WhitespaceRule()
-        );
+                new WhitespaceRule());
         return new PasswordValidator(rules);
     }
 
@@ -78,17 +78,18 @@ public class SecurityConfig {
      * Main security filter chain
      */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, OAuth2LoginSuccessHandler successHandler)
+            throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt.decoder(jwtDecoder()))
-                );
+                        .jwt(jwt -> jwt.decoder(jwtDecoder())))
+                .oauth2Login(oauth2 -> oauth2
+                        .successHandler(successHandler));
 
         return http.build();
     }
@@ -98,10 +99,10 @@ public class SecurityConfig {
      */
     @Bean
     public JwtDecoder jwtDecoder() {
-        try{
+        try {
             RSAPublicKey publicKey = loadPublicKey(publicKeyResource);
             return NimbusJwtDecoder.withPublicKey(publicKey).build();
-        }catch (Exception e){
+        } catch (Exception e) {
             throw new IllegalStateException("Failed to load RSA public key for JWT decoder", e);
         }
 

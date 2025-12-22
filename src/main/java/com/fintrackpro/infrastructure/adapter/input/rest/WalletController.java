@@ -109,7 +109,7 @@ public class WalletController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<Wallet>>> getUserWallets() {
         // TODO: Get userId from authentication context
-        Long userId = 1L;
+        Long userId = currentUserProvider.getCurrentUserId();;
         log.info("Fetching all wallets for user: {}", userId);
         List<Wallet> wallets = walletUseCase.getUserWallets(userId);
         return ResponseEntity.ok(ApiResponse.success("Wallets retrieved successfully", wallets));
@@ -260,8 +260,7 @@ public class WalletController {
     public ResponseEntity<ApiResponse<List<Wallet>>> getWalletsByType(
             @Parameter(description = "Wallet type (e.g., CASH, BANK, CREDIT_CARD)", required = true, example = "CASH")
             @PathVariable WalletType type) {
-        // TODO: Get userId from authentication context
-        Long userId = 1L;
+        Long userId = currentUserProvider.getCurrentUserId();
         log.info("Fetching {} wallets for user: {}", type, userId);
         List<Wallet> wallets = walletUseCase.getWalletsByType(userId, type);
         return ResponseEntity.ok(ApiResponse.success("Wallets retrieved successfully", wallets));
@@ -308,7 +307,7 @@ public class WalletController {
     @GetMapping("/balance/total")
     public ResponseEntity<ApiResponse<BigDecimal>> getTotalBalance() {
         // TODO: Get userId from authentication context
-        Long userId = 1L;
+        Long userId = currentUserProvider.getCurrentUserId();
         log.debug("Calculating total balance for user: {}", userId);
         BigDecimal totalBalance = walletUseCase.getTotalBalance(userId);
         return ResponseEntity.ok(ApiResponse.success("Total balance retrieved successfully", totalBalance));

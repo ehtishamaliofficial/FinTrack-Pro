@@ -1,28 +1,33 @@
+version: "3.8"
+
 services:
-  db:
-    image: postgres:17
+  fintrack-db:
+    image: postgres:15
     container_name: fintrack-db
     environment:
-      POSTGRES_USER: fintrack
-      POSTGRES_PASSWORD: fintrack123
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
       POSTGRES_DB: fintrack
     ports:
-      - "5432:5432"
+      - "5433:5432"   # Host port 5433 → Container port 5432
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - fintrack-pro_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
 
-  app:
-    build: .
+  fintrack-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fintrack-app
     environment:
-      SPRING_DATASOURCE_URL: "jdbc:postgresql://db:5432/fintrack"
-      SPRING_DATASOURCE_USERNAME: "fintrack"
-      SPRING_DATASOURCE_PASSWORD: "fintrack123"
-      MAIL: "robbyknee85@gmail.com"
-      MAIL_PASSWORD: "rawz xfkb tadc etdg"
-    depends_on:
-      - db
+      SPRING_DATASOURCE_URL: jdbc:postgresql://fintrack-db:5432/fintrack
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: root
     ports:
       - "8080:8080"
+    depends_on:
+      - fintrack-db
+    restart: unless-stopped
 
 volumes:
-  pgdata:
+  fintrack-pro_pgdata:

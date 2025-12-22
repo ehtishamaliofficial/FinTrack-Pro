@@ -24,6 +24,10 @@ public record CreateWalletRequest(
         @DecimalMin(value = "0.0", message = "Credit limit cannot be negative")
         BigDecimal creditLimit,
 
+        @Pattern(
+                regexp = "^#[0-9A-F]{6}$",
+                message = "Color must be a valid HEX value like #A0B1C2"
+        )
         String color,
         String icon,
         boolean isDefault,

@@ -5,7 +5,6 @@ import com.fintrackpro.domain.model.User;
 import com.fintrackpro.infrastructure.adapter.input.dto.request.RegisterRequest;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.Named;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.time.Clock;
