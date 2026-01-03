@@ -2,26 +2,26 @@ package com.fintrackpro.application.service;
 
 import com.fintrackpro.application.port.input.AuthUseCase;
 import com.fintrackpro.application.port.output.EmailServicePort;
+import com.fintrackpro.application.port.output.RefreshTokenRepositoryPort;
 import com.fintrackpro.domain.exception.InvalidRequestException;
+import com.fintrackpro.domain.model.RefreshToken;
 import com.fintrackpro.domain.model.User;
 import com.fintrackpro.domain.port.output.UserRepositoryPort;
 import com.fintrackpro.infrastructure.adapter.input.dto.response.AuthResponse;
 import com.fintrackpro.infrastructure.adapter.input.dto.response.UserInfo;
-import com.fintrackpro.infrastructure.adapter.output.persistence.entity.RefreshTokenEntity;
-import com.fintrackpro.infrastructure.adapter.output.persistence.entity.UserEntity;
-import com.fintrackpro.infrastructure.adapter.output.persistence.repository.JpaRefreshTokenRepository;
-import com.fintrackpro.infrastructure.adapter.output.persistence.repository.JpaUserRepository;
 import com.fintrackpro.infrastructure.security.JwtService;
+import com.fintrackpro.infrastructure.util.MessageUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.passay.PasswordData;
 import org.passay.PasswordValidator;
-import com.fintrackpro.infrastructure.util.MessageUtil;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 
@@ -36,11 +36,13 @@ public class AuthService implements AuthUseCase {
     private final MessageUtil messageUtil;
     private final EmailServicePort emailServicePort;
     private final JwtService jwtService;
-    private final JpaRefreshTokenRepository refreshTokenRepository;
-    private final JpaUserRepository jpaUserRepository;
+    private final RefreshTokenRepositoryPort refreshTokenRepositoryPort;
 
-    private static final int MAX_FAILED_ATTEMPTS = 5;
-    private static final long LOCK_DURATION_MINUTES = 30;
+    @Value("${security.login.max-failed-attempts}")
+    private int maxFailedAttempts;
+
+    @Value("${security.login.lock-duration-minutes}")
+    private long lockDurationMinutes;
 
     @Override
     public User register(User user) {
@@ -81,9 +83,14 @@ public class AuthService implements AuthUseCase {
     @Override
     @Transactional(noRollbackFor = InvalidRequestException.class)
     public AuthResponse login(String email, String password, String ipAddress, String userAgent) {
-        // Find user by email
-        User user = userRepositoryPort.findByEmail(email)
-                .orElseThrow(() -> new InvalidRequestException(messageUtil.getMessage("error.invalid.credentials")));
+        Optional<User> userOptional = userRepositoryPort.findByEmail(email);
+
+        if (userOptional.isEmpty()) {
+            log.warn("Login attempt for non-existent email: {}", email);
+            throw new InvalidRequestException(messageUtil.getMessage("error.invalid.credentials"));
+        }
+
+        User user = userOptional.get();
 
         // Check if account is locked
         if (user.accountLockedUntil() != null && user.accountLockedUntil().isAfter(LocalDateTime.now())) {
@@ -150,20 +157,18 @@ public class AuthService implements AuthUseCase {
 
     @Override
     @Transactional
-    public AuthResponse refreshToken(String refreshToken) {
+    public AuthResponse refreshToken(String refreshTokenValue) {
         // Find refresh token
-        RefreshTokenEntity tokenEntity = refreshTokenRepository.findByToken(refreshToken)
+        RefreshToken refreshToken = refreshTokenRepositoryPort.findByToken(refreshTokenValue)
                 .orElseThrow(() -> new InvalidRequestException(messageUtil.getMessage("error.invalid.refresh.token")));
 
         // Validate token
-        if (!tokenEntity.isValid()) {
+        if (!refreshToken.isValid()) {
             throw new InvalidRequestException(messageUtil.getMessage("error.refresh.token.expired"));
         }
 
         // Get user
-        UserEntity userEntity = tokenEntity.getUser();
-        User user = userRepositoryPort.findById(userEntity.getId())
-                .orElseThrow(() -> new InvalidRequestException(messageUtil.getMessage("error.user.not.found")));
+        User user = refreshToken.user();
 
         // Check if user is still active
         if (!user.enabled() || !user.emailVerified()) {
@@ -185,39 +190,42 @@ public class AuthService implements AuthUseCase {
 
         log.info("Token refreshed for user: {}", user.email());
 
-        return AuthResponse.of(newAccessToken, refreshToken, jwtService.getJwtExpiration(), userInfo);
+        return AuthResponse.of(newAccessToken, refreshTokenValue, jwtService.getJwtExpiration(), userInfo);
     }
 
     @Override
     @Transactional
-    public void logout(String refreshToken) {
-        RefreshTokenEntity tokenEntity = refreshTokenRepository.findByToken(refreshToken)
+    public void logout(String refreshTokenValue) {
+        RefreshToken refreshToken = refreshTokenRepositoryPort.findByToken(refreshTokenValue)
                 .orElseThrow(() -> new InvalidRequestException(messageUtil.getMessage("error.invalid.refresh.token")));
 
-        tokenEntity.setRevoked(true);
-        tokenEntity.setRevokedAt(LocalDateTime.now());
-        refreshTokenRepository.save(tokenEntity);
+        RefreshToken revokedToken = refreshToken.toBuilder()
+                .revoked(true)
+                .revokedAt(LocalDateTime.now())
+                .build();
 
-        log.info("User logged out: {}", tokenEntity.getUser().getEmail());
+        refreshTokenRepositoryPort.save(revokedToken, refreshToken.user().id());
+
+        log.info("User logged out: {}", refreshToken.user().email());
     }
 
     @Override
     @Transactional
     public void logoutAll(Long userId) {
-        UserEntity userEntity = jpaUserRepository.findById(userId)
+        userRepositoryPort.findById(userId)
                 .orElseThrow(() -> new InvalidRequestException(messageUtil.getMessage("error.user.not.found")));
 
-        refreshTokenRepository.revokeAllUserTokens(userEntity, LocalDateTime.now());
+        refreshTokenRepositoryPort.revokeAllByUserId(userId);
 
-        log.info("All sessions logged out for user: {}", userEntity.getEmail());
+        log.info("All sessions logged out for user ID: {}", userId);
     }
 
     private void handleFailedLogin(User user, String ipAddress, String userAgent) {
         User updatedUser = user.increaseFailedLoginAttempts();
 
         LocalDateTime lockUntil = null;
-        if (updatedUser.failedLoginAttempts() >= MAX_FAILED_ATTEMPTS) {
-            lockUntil = LocalDateTime.now().plusMinutes(LOCK_DURATION_MINUTES);
+        if (updatedUser.failedLoginAttempts() >= maxFailedAttempts) {
+            lockUntil = LocalDateTime.now().plusMinutes(lockDurationMinutes);
             updatedUser = updatedUser.lockAccountUntil(lockUntil);
             log.warn("Account locked due to too many failed attempts: {}", user.email());
         }
@@ -236,20 +244,17 @@ public class AuthService implements AuthUseCase {
     }
 
     private void saveRefreshToken(Long userId, String token, String ipAddress, String userAgent) {
-        UserEntity userEntity = jpaUserRepository.findById(userId)
-                .orElseThrow(() -> new InvalidRequestException(messageUtil.getMessage("error.user.not.found")));
-
-        RefreshTokenEntity refreshToken = RefreshTokenEntity.builder()
+        RefreshToken refreshToken = RefreshToken.builder()
                 .token(token)
-                .user(userEntity)
                 .expiresAt(LocalDateTime.now().plusSeconds(jwtService.getRefreshExpiration() / 1000))
                 .ipAddress(ipAddress)
                 .userAgent(userAgent)
                 .build();
 
-        refreshTokenRepository.save(refreshToken);
+        refreshTokenRepositoryPort.save(refreshToken, userId);
     }
 
+    @Override
     public void verifyEmail(String token) {
         User user = userRepositoryPort.findByEmailVerificationToken(token)
                 .orElseThrow(() -> new InvalidRequestException(messageUtil.getMessage("error.verification.token.invalid")));

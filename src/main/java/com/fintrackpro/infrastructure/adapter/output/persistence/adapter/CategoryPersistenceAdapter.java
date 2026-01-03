@@ -41,7 +41,7 @@ public class CategoryPersistenceAdapter implements CategoryRepositoryPort {
         return jpaCategoryRepository.findByUser(entityReferenceHelper.getUserReference(userId))
                 .stream()
                 .map(mapper::toDomain)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -49,7 +49,7 @@ public class CategoryPersistenceAdapter implements CategoryRepositoryPort {
         return jpaCategoryRepository.findByIsSystemTrue()
                 .stream()
                 .map(mapper::toDomain)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -65,7 +65,7 @@ public class CategoryPersistenceAdapter implements CategoryRepositoryPort {
         // Combine both lists
         return Stream.concat(systemCategories.stream(), userCategories.stream())
                 .map(mapper::toDomain)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -80,7 +80,7 @@ public class CategoryPersistenceAdapter implements CategoryRepositoryPort {
         // Combine both lists
         return Stream.concat(systemCategories.stream(), userCategories.stream())
                 .map(mapper::toDomain)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
