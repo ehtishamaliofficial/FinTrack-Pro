@@ -1,6 +1,6 @@
 package com.fintrackpro.domain.model;
 
-import com.fintrackpro.infrastructure.adapter.output.persistence.entity.UserEntity;
+
 import lombok.Builder;
 
 import java.time.LocalDateTime;

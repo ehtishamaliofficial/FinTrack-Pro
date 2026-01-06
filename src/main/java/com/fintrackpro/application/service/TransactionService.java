@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,22 +39,33 @@ public class TransactionService implements TransactionUseCase {
         log.info("Creating new transaction of type {} for user: {}",
                 transaction.type(), transaction.userId());
 
-        // Validate wallet exists
-        walletRepositoryPort.findById(transaction.walletId())
+        // Validate and get the source wallet
+        var wallet = walletRepositoryPort.findById(transaction.walletId())
                 .orElseThrow(() -> new InvalidRequestException(
                         "Wallet not found with id: " + transaction.walletId()));
 
         // For transfers, validate destination wallet
         if (transaction.isTransfer() && transaction.toWalletId() != null) {
-            walletRepositoryPort.findById(transaction.toWalletId())
+            var toWallet = walletRepositoryPort.findById(transaction.toWalletId())
                     .orElseThrow(() -> new InvalidRequestException(
                             "Destination wallet not found with id: " + transaction.toWalletId()));
+
+            // Update destination wallet balance (add the transfer amount)
+            var updatedToWallet = toWallet.addTransaction(transaction.amount(), LocalDateTime.now());
+            walletRepositoryPort.save(updatedToWallet);
         }
+
+        // Update source wallet balance using the effective amount
+        // For INCOME: positive amount (adds to balance)
+        // For EXPENSE: negative amount (subtracts from balance)
+        // For TRANSFER: negative amount (subtracts from source wallet)
+        var updatedWallet = wallet.addTransaction(transaction.getEffectiveAmount(), LocalDateTime.now());
+        walletRepositoryPort.save(updatedWallet);
 
         // Save transaction
         Transaction savedTransaction = transactionRepositoryPort.save(transaction);
 
-        log.info("Successfully created transaction with id: {}", savedTransaction.id());
+        log.info("Successfully created transaction with id: {} and updated wallet balance", savedTransaction.id());
         return savedTransaction;
     }
 
@@ -125,17 +137,53 @@ public class TransactionService implements TransactionUseCase {
     public Transaction updateTransaction(Transaction transaction) {
         log.info("Updating transaction with id: {}", transaction.id());
 
-        // Verify transaction exists
-        transactionRepositoryPort.findById(transaction.id())
+        // Get the existing transaction to reverse its effect on wallet balance
+        var existingTransaction = transactionRepositoryPort.findById(transaction.id())
                 .orElseThrow(() -> new InvalidRequestException(TRANSACTION_NOT_FOUND + transaction.id()));
 
-        // Validate wallet exists
-        walletRepositoryPort.findById(transaction.walletId())
+        // Reverse the old transaction's effect on the source wallet
+        var oldWallet = walletRepositoryPort.findById(existingTransaction.walletId())
+                .orElseThrow(() -> new InvalidRequestException(
+                        "Wallet not found with id: " + existingTransaction.walletId()));
+
+        // Reverse the effect: negate the effective amount
+        var revertedWallet = oldWallet.addTransaction(
+                existingTransaction.getEffectiveAmount().negate(), LocalDateTime.now());
+        walletRepositoryPort.save(revertedWallet);
+
+        // If old transaction was a transfer, reverse the destination wallet effect
+        if (existingTransaction.isTransfer() && existingTransaction.toWalletId() != null) {
+            var oldToWallet = walletRepositoryPort.findById(existingTransaction.toWalletId())
+                    .orElseThrow(() -> new InvalidRequestException(
+                            "Destination wallet not found with id: " + existingTransaction.toWalletId()));
+            var revertedToWallet = oldToWallet.addTransaction(
+                    existingTransaction.amount().negate(), LocalDateTime.now());
+            walletRepositoryPort.save(revertedToWallet);
+        }
+
+        // Now apply the new transaction's effect
+        // Validate and get the new source wallet
+        var newWallet = walletRepositoryPort.findById(transaction.walletId())
                 .orElseThrow(() -> new InvalidRequestException(
                         "Wallet not found with id: " + transaction.walletId()));
 
+        // For transfers, validate and update destination wallet
+        if (transaction.isTransfer() && transaction.toWalletId() != null) {
+            var toWallet = walletRepositoryPort.findById(transaction.toWalletId())
+                    .orElseThrow(() -> new InvalidRequestException(
+                            "Destination wallet not found with id: " + transaction.toWalletId()));
+
+            // Update destination wallet balance (add the transfer amount)
+            var updatedToWallet = toWallet.addTransaction(transaction.amount(), LocalDateTime.now());
+            walletRepositoryPort.save(updatedToWallet);
+        }
+
+        // Update source wallet balance using the effective amount
+        var updatedWallet = newWallet.addTransaction(transaction.getEffectiveAmount(), LocalDateTime.now());
+        walletRepositoryPort.save(updatedWallet);
+
         Transaction updatedTransaction = transactionRepositoryPort.save(transaction);
-        log.info("Successfully updated transaction with id: {}", transaction.id());
+        log.info("Successfully updated transaction with id: {} and adjusted wallet balances", transaction.id());
         return updatedTransaction;
     }
 
@@ -144,11 +192,32 @@ public class TransactionService implements TransactionUseCase {
     public void deleteTransaction(Long id) {
         log.info("Deleting transaction with id: {}", id);
 
-        transactionRepositoryPort.findById(id)
+        // Get the transaction to reverse its effect on wallet balance
+        var transaction = transactionRepositoryPort.findById(id)
                 .orElseThrow(() -> new InvalidRequestException(TRANSACTION_NOT_FOUND + id));
 
+        // Reverse the transaction's effect on the source wallet
+        var wallet = walletRepositoryPort.findById(transaction.walletId())
+                .orElseThrow(() -> new InvalidRequestException(
+                        "Wallet not found with id: " + transaction.walletId()));
+
+        // Reverse the effect: negate the effective amount
+        var revertedWallet = wallet.addTransaction(
+                transaction.getEffectiveAmount().negate(), LocalDateTime.now());
+        walletRepositoryPort.save(revertedWallet);
+
+        // If it was a transfer, reverse the destination wallet effect
+        if (transaction.isTransfer() && transaction.toWalletId() != null) {
+            var toWallet = walletRepositoryPort.findById(transaction.toWalletId())
+                    .orElseThrow(() -> new InvalidRequestException(
+                            "Destination wallet not found with id: " + transaction.toWalletId()));
+            var revertedToWallet = toWallet.addTransaction(
+                    transaction.amount().negate(), LocalDateTime.now());
+            walletRepositoryPort.save(revertedToWallet);
+        }
+
         transactionRepositoryPort.deleteById(id);
-        log.info("Successfully deleted transaction with id: {}", id);
+        log.info("Successfully deleted transaction with id: {} and adjusted wallet balances", id);
     }
 
     @Override
