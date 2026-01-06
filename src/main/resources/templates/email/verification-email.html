@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="content">
+    <h2 th:text="'Hello, ' + ${username} + '!'">Hello, User!</h2>
+    
+    <p>Thank you for registering with <strong>FinTrack Pro</strong>. We're excited to have you on board!</p>
+    
+    <p>To complete your registration and start managing your finances, please verify your email address by clicking the button below:</p>
+    
+    <div class="button-container">
+        <a th:href="${verificationLink}" class="button">Verify Email Address</a>
+    </div>
+    
+    <p style="text-align: center; color: #6b7280; font-size: 14px;">
+        If the button doesn't work, copy and paste this link into your browser:
+    </p>
+    
+<!--    <div class="link-text" th:text="${verificationLink}">-->
+<!--        http://localhost:3000/verify-email?token=xxxxx-->
+<!--    </div>-->
+    
+    <div class="info-box">
+        <p><strong>⏰ Important:</strong> This verification link will expire in 24 hours.</p>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <p style="font-size: 14px; color: #6b7280;">
+        If you didn't create an account with FinTrack Pro, please ignore this email.
+    </p>
+</div>
+</body>
+</html>

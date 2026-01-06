@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="content">
+    <h2 th:text="'Welcome, ' + ${username} + '!'">Welcome, User!</h2>
+    
+    <p>🎉 Your email has been successfully verified!</p>
+    
+    <p>You can now log in and start tracking your expenses, managing budgets, and achieving your financial goals with <strong>FinTrack Pro</strong>.</p>
+    
+    <div class="button-container">
+        <a th:href="${loginLink}" class="button success">Get Started</a>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 16px;">What you can do with FinTrack Pro:</h3>
+    
+    <div style="margin: 20px 0;">
+        <p style="margin: 12px 0;">
+            <strong>📊 Track Expenses:</strong> Monitor your spending across different categories
+        </p>
+        <p style="margin: 12px 0;">
+            <strong>💰 Manage Budgets:</strong> Set and track budgets to stay on top of your finances
+        </p>
+        <p style="margin: 12px 0;">
+            <strong>📈 Financial Insights:</strong> Get detailed reports and analytics
+        </p>
+        <p style="margin: 12px 0;">
+            <strong>🎯 Set Goals:</strong> Create and achieve your financial objectives
+        </p>
+    </div>
+    
+    <div class="info-box">
+        <p><strong>💡 Tip:</strong> Start by setting up your first budget and adding your regular expenses!</p>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <p style="font-size: 14px; color: #6b7280;">
+        We're here to help you take control of your finances. If you have any questions, feel free to reach out to our support team.
+    </p>
+</div>
+</body>
+</html>
